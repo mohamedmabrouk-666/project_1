@@ -1,0 +1,27 @@
+# =====================================================================
+# Alertmanager: بياخد التنبيهات من Prometheus ويوزّعها
+# (يجمّعها، يمنع التكرار، ويبعتها للمكان الصح)
+# =====================================================================
+route:
+  receiver: default
+  group_by: [alertname]     # نجمّع التنبيهات المتشابهة في رسالة واحدة
+  group_wait: 30s           # نستنى شوية عشان نجمّع قبل ما نبعت
+  group_interval: 5m
+  repeat_interval: 4h       # ماتكررش نفس التنبيه قبل 4 ساعات
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: critical
+      repeat_interval: 1h   # الـ critical نفكّرك بيه أكتر
+
+receivers:
+  - name: default
+    # webhook لأي أداة (للتجربة استخدم https://webhook.site)
+    webhook_configs:
+      - url: "http://example.invalid/hook"   # ← غيّره
+  - name: critical
+    # slack_configs:
+    #   - api_url: "https://hooks.slack.com/services/XXX"   # ← من secret مش في الكود
+    #     channel: "#alerts"
+    #     send_resolved: true
+    webhook_configs:
+      - url: "http://example.invalid/hook-critical"   # ← غيّره

@@ -1,0 +1,35 @@
+# =====================================================================
+# أدوات الـ CI/CD والجودة محلياً: Jenkins + SonarQube
+# التشغيل: make cicd-up
+# =====================================================================
+name: cicd
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    user: root                       # للتجربة المحلية بس (عشان يوصل لـ docker.sock)
+    ports:
+      - "8081:8080"                  # 8081 عشان 8080 واخده التطبيق
+      - "50000:50000"                # بورت الـ agents
+    volumes:
+      - jenkins-home:/var/jenkins_home          # عشان الإعدادات والـ jobs تفضل
+      - /var/run/docker.sock:/var/run/docker.sock   # Jenkins يبني images بـ docker الجهاز
+    networks: [app-net]
+
+  sonarqube:
+    image: sonarqube:10.6-community
+    ports: ["9000:9000"]
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonar-data:/opt/sonarqube/data
+    networks: [app-net]
+
+volumes:
+  jenkins-home:
+  sonar-data:
+
+networks:
+  app-net:
+    external: true
+    name: app-net

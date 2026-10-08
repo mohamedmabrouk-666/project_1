@@ -1,0 +1,30 @@
+# =====================================================================
+# values.yaml — القيم الافتراضية. كل بيئة تعدّل اللي محتاجاه بس (values-dev / values-prod)
+# المشكلة: نسخ ملفات YAML لكل بيئة وتعديلها يدوي = تكرار وأخطاء
+# الحل: template واحد + ملف قيم لكل بيئة
+# =====================================================================
+replicaCount: 2
+
+image:
+  repository: mohamedmabrouk/devops-journey
+  tag: "1"                 # بيتعدّل من الـ CI
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  host: devops-journey.local
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+resources:
+  requests: { cpu: 50m,  memory: 64Mi }
+  limits:   { cpu: 200m, memory: 128Mi }

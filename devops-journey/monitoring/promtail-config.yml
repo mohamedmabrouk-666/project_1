@@ -1,0 +1,22 @@
+# =====================================================================
+# Promtail: الـ agent اللي بيقرا logs الـ containers ويبعتها لـ Loki
+# =====================================================================
+server:
+  http_listen_port: 9080
+
+positions:
+  filename: /tmp/positions.yaml   # بيفتكر وصل لفين في كل ملف عشان مايكررش
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:            # يكتشف الـ containers تلقائياً من docker.sock
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # اسم الـ container يبقى label في Loki → نقدر نفلتر: {container="web"}
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: container

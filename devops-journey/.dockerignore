@@ -1,0 +1,14 @@
+# الملفات اللي مش محتاجينها جوه الـ image (أصغر حجم + أمان أكتر + build أسرع)
+.git
+.github
+terraform
+ansible
+k8s
+helm
+argocd
+monitoring
+security
+*.md
+.env
+Jenkinsfile
+docker-compose*.yml

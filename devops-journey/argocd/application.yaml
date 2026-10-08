@@ -1,0 +1,32 @@
+# =====================================================================
+# ArgoCD Application — GitOps: الـ Git هو "مصدر الحقيقة"
+# المشكلة: الـ CI عنده صلاحيات مباشرة على الـ cluster (خطر) + مفيش ضمان إن
+#          اللي شغال مطابق لللي في Git
+# الحل: ArgoCD جوه الـ cluster بيسحب من Git ويطابق الـ cluster معاه باستمرار
+# =====================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devops-journey
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]   # مسح الـ app يمسح مواردها
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mohamedmabrouk-666/devops-journey.git
+    targetRevision: main
+    path: k8s                        # أو: helm/devops-journey (مع helm.valueFiles)
+    directory:
+      exclude: 'policies/*'          # الـ policies بتتنشر منفصلة (cluster-scoped)
+  destination:
+    server: https://kubernetes.default.svc    # الـ cluster اللي ArgoCD شغال فيه
+    namespace: devops-journey
+  syncPolicy:
+    automated:
+      prune: true                    # اللي اتشال من Git يتشال من الـ cluster
+      selfHeal: true                 # لو حد عدّل يدوي بـ kubectl → يرجّعه لحالة Git
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff: { duration: 10s, factor: 2 }

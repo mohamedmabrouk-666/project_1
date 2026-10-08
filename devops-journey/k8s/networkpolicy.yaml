@@ -1,0 +1,26 @@
+# NetworkPolicy: firewall بين الـ pods (الافتراضي في K8s: الكل يكلّم الكل!)
+# القاعدة: امنع كل حاجة، وبعدين اسمح بالمطلوب بس (Zero Trust)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: devops-journey
+  namespace: devops-journey
+spec:
+  podSelector:
+    matchLabels: { app: devops-journey }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:                 # الـ Ingress Controller
+            matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+        - namespaceSelector:                 # Prometheus يسحب metrics
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:                                    # DNS بس (التطبيق static مش محتاج أكتر)
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - { protocol: UDP, port: 53 }

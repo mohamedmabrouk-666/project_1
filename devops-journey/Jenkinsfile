@@ -1,0 +1,116 @@
+// =====================================================================
+// Jenkinsfile — الـ CI/CD pipeline كـ كود (Pipeline as Code)
+// المشكلة: build/test/push/deploy يدوي = بطيء وفيه أخطاء بشرية
+// الحل: كل push على Git يشغّل نفس الخطوات بنفس الترتيب أوتوماتيك
+//
+// Credentials لازم تتضاف في Jenkins (Manage Jenkins → Credentials):
+//   dockerhub-creds  (Username/Password)   |  sonar-token (Secret text)
+//   github-creds     (Username/Token)
+// =====================================================================
+pipeline {
+    agent any
+
+    // متغيرات متاحة في كل الـ stages
+    environment {
+        IMAGE_NAME = 'mohamedmabrouk/devops-journey'     // ← غيّر لاسم حسابك
+        IMAGE_TAG  = "${env.BUILD_NUMBER}"                // رقم الـ build = tag ثابت لا يتغير
+        DOCKERHUB  = credentials('dockerhub-creds')       // بيعمل DOCKERHUB_USR و DOCKERHUB_PSW
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')    // مايعلّقش للأبد
+        disableConcurrentBuilds()             // build واحد في نفس الوقت
+        buildDiscarder(logRotator(numToKeepStr: '10'))   // يحتفظ بآخر 10 بس (توفير مساحة)
+    }
+
+    stages {
+
+        // 1) سحب الكود من Git
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        // 2) Shift-Left Security: أرخص وقت تلاقي secret مسرّب هو قبل ما يوصل لأي مكان
+        stage('Secret Scan (Gitleaks)') {
+            steps {
+                sh 'docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --config=/repo/security/gitleaks.toml --no-banner'
+            }
+        }
+
+        // 3) فحص جودة وأمان الكود (SAST) — يفشّل الـ build لو الـ Quality Gate مارجعش
+        stage('Code Quality (SonarQube)') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                      docker run --rm --network app-net -v "$PWD:/usr/src" \
+                        -e SONAR_HOST_URL=http://sonarqube:9000 -e SONAR_TOKEN=$SONAR_TOKEN \
+                        sonarsource/sonar-scanner-cli \
+                        -Dproject.settings=security/sonar-project.properties -Dsonar.qualitygate.wait=true
+                    '''
+                }
+            }
+        }
+
+        // 4) فحص الـ IaC قبل ما يتنفذ (S3 مفتوح؟ SG مفتوح؟)
+        stage('IaC Scan (Checkov)') {
+            steps {
+                sh 'docker run --rm -v "$PWD/terraform:/tf" bridgecrew/checkov -d /tf --quiet --compact || true'
+                // شيل "|| true" لما تصلّح الملاحظات عشان يبقى blocking
+            }
+        }
+
+        // 5) بناء الـ image
+        stage('Build Image') {
+            steps {
+                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
+            }
+        }
+
+        // 6) فحص الـ image للثغرات — --exit-code 1 يوقف الـ pipeline لو فيه CRITICAL
+        stage('Image Scan (Trivy)') {
+            steps {
+                sh '''
+                  docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v "$PWD/security/.trivyignore:/.trivyignore" aquasec/trivy:latest image \
+                    --severity CRITICAL --exit-code 1 --ignore-unfixed $IMAGE_NAME:$IMAGE_TAG
+                '''
+            }
+        }
+
+        // 7) رفع الـ image (بس من main — مش من أي branch)
+        stage('Push Image') {
+            when { branch 'main' }
+            steps {
+                sh '''
+                  echo $DOCKERHUB_PSW | docker login -u $DOCKERHUB_USR --password-stdin
+                  docker push $IMAGE_NAME:$IMAGE_TAG
+                '''
+            }
+        }
+
+        // 8) GitOps: ما بنعملش kubectl apply! بس بنعدّل tag الـ image في Git
+        //    و ArgoCD (جوه الـ cluster) يلاحظ التغيير ويطبّقه.
+        //    ← الـ CI ماعندوش صلاحية على الـ cluster = أمان أعلى
+        stage('Update Manifest (GitOps)') {
+            when { branch 'main' }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-creds', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
+                    sh '''
+                      sed -i "s|image: .*devops-journey:.*|image: $IMAGE_NAME:$IMAGE_TAG|" k8s/deployment.yaml
+                      git config user.name  "jenkins-ci"
+                      git config user.email "ci@example.com"
+                      git add k8s/deployment.yaml
+                      git commit -m "ci: deploy $IMAGE_TAG [skip ci]" || exit 0
+                      git push https://$GH_USER:$GH_TOKEN@github.com/mohamedmabrouk-666/devops-journey.git HEAD:main
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always  { sh 'docker logout || true'; cleanWs() }   // نظّف الـ workspace والـ login
+        success { echo "✅ ArgoCD هيعمل sync للنسخة ${IMAGE_TAG}" }
+        failure { echo '❌ فشل — راجع الـ stage اللي وقع (غالباً security gate)' }
+    }
+}

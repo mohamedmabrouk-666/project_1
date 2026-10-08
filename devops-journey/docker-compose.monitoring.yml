@@ -1,0 +1,81 @@
+# =====================================================================
+# stack المراقبة كامل: Prometheus + Grafana + Alertmanager + Loki + Promtail
+# التشغيل: make monitoring-up   (لازم docker-compose.yml يكون شغال الأول)
+#
+# المشكلة: التطبيق شغال بس انت أعمى — مفيش أرقام ولا logs ولا تنبيهات
+# الحل: metrics (Prometheus) + dashboards (Grafana) + logs (Loki) + alerts
+# =====================================================================
+name: monitoring
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prom-data:/prometheus                 # عشان الداتا تفضل بعد restart
+    ports: ["9090:9090"]
+    networks: [app-net]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports: ["9093:9093"]
+    networks: [app-net]
+
+  # node-exporter: metrics بتاعة الجهاز نفسه (CPU / RAM / Disk)
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    ports: ["9100:9100"]
+    networks: [app-net]
+
+  # cAdvisor: metrics بتاعة كل container (استهلاك كل واحد لوحده)
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports: ["8082:8080"]
+    networks: [app-net]
+
+  # Loki: مخزن الـ logs المركزي
+  loki:
+    image: grafana/loki:3.1.1
+    command: -config.file=/etc/loki/local-config.yaml
+    ports: ["3100:3100"]
+    networks: [app-net]
+
+  # Promtail: بيقرا logs الـ containers ويبعتها لـ Loki
+  promtail:
+    image: grafana/promtail:3.1.1
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks: [app-net]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      # ⚠️ للتجربة المحلية بس! في الواقع: اقراها من secret (Vault / Secrets Manager)
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    ports: ["3000:3000"]
+    depends_on: [prometheus, loki]
+    networks: [app-net]
+
+volumes:
+  prom-data:
+  grafana-data:
+
+networks:
+  app-net:
+    external: true        # نفس الشبكة بتاعة docker-compose.yml عشان يشوفوا بعض
+    name: app-net

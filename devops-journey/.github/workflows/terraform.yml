@@ -1,0 +1,36 @@
+# =====================================================================
+# Terraform في الـ CI: plan على كل PR عشان الفريق يشوف التغيير قبل الـ merge
+# المشكلة: حد يغيّر infra من غير ما حد يراجع
+# الحل: الـ plan يظهر في الـ PR، والـ apply بيتم بعد الموافقة بس
+# Secrets: AWS_ROLE_ARN (يفضّل OIDC بدل access keys دائمة)
+# =====================================================================
+name: Terraform
+
+on:
+  pull_request:
+    paths: ['terraform/**']
+
+permissions:
+  id-token: write      # عشان OIDC: GitHub ياخد credentials مؤقتة من AWS (من غير مفاتيح محفوظة!)
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: terraform }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - run: terraform fmt -check          # تنسيق موحّد
+      - run: terraform init
+      - run: terraform validate            # syntax سليم؟
+      - run: terraform plan -var="my_ip=${{ vars.MY_IP }}" -no-color

@@ -1,0 +1,13 @@
+# Dependabot: بيفتح Pull Request لوحده لما يظهر تحديث (خصوصاً الأمني)
+# المشكلة: الـ base images والـ actions بتتقدّم فيها ثغرات ومحدش بيلاحظ
+version: 2
+updates:
+  - package-ecosystem: docker          # يحدّث FROM في Dockerfile
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions # يحدّث نسخ الـ actions المستخدمة
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: terraform       # يحدّث نسخ الـ providers
+    directory: /terraform
+    schedule: { interval: weekly }

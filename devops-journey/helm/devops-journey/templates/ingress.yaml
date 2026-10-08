@@ -1,0 +1,18 @@
+{{- if .Values.ingress.enabled }}        # يتعمل بس لو متفعّل في values
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "dj.fullname" . }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dj.fullname" . }}
+                port: { number: {{ .Values.service.port }} }
+{{- end }}

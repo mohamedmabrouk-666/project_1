@@ -1,0 +1,6 @@
+# dev: موارد أقل، من غير autoscaling
+replicaCount: 1
+ingress:
+  host: dev.devops-journey.local
+autoscaling:
+  enabled: false

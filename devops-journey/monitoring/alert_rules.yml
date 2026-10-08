@@ -1,0 +1,39 @@
+# =====================================================================
+# قواعد التنبيه (PromQL). لما expr يتحقق لمدة "for" → التنبيه يتفعّل
+# =====================================================================
+groups:
+  - name: devops-journey
+    rules:
+
+      # 1) الموقع واقع: الـ exporter مش قادر يوصل لـ nginx
+      - alert: WebsiteDown
+        expr: nginx_up == 0
+        for: 1m                       # لمدة دقيقة (عشان نتجنب false alarms)
+        labels: { severity: critical }
+        annotations:
+          summary: "الموقع واقع"
+          description: "nginx مش بيرد من أكتر من دقيقة"
+
+      # 2) CPU الجهاز عالي
+      - alert: HighCPU
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "CPU عدّى 80%"
+
+      # 3) الميموري قربت تخلص
+      - alert: HighMemory
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 85
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "الميموري عدّت 85%"
+
+      # 4) الهارد قرب يمتلي
+      - alert: DiskAlmostFull
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes) * 100 > 90
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: "الهارد عدّى 90%"

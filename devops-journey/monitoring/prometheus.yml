@@ -1,0 +1,40 @@
+# =====================================================================
+# Prometheus: بيعمل "scrape" (يسحب) metrics من الأهداف كل فترة
+# =====================================================================
+global:
+  scrape_interval: 15s        # كل قد إيه يسحب
+  evaluation_interval: 15s    # كل قد إيه يفحص قواعد التنبيه
+
+# مين يستقبل التنبيهات لما قاعدة تتفعّل
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+# ملف قواعد التنبيه
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  # Prometheus يراقب نفسه
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # metrics بتاعة nginx (الطلبات / الاتصالات النشطة) عن طريق الـ exporter
+  - job_name: nginx
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
+
+  # metrics بتاعة الجهاز (CPU / RAM / Disk)
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # metrics بتاعة كل container
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+# ملاحظة: جوه Kubernetes هنستخدم kube-prometheus-stack (Helm) + ServiceMonitor
+# بدل ما نكتب الأهداف يدوي، لأن الـ pods بتتغير باستمرار.

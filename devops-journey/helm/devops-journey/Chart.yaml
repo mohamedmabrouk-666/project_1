@@ -1,0 +1,7 @@
+# Chart.yaml: بطاقة تعريف الـ chart (زي package.json)
+apiVersion: v2
+name: devops-journey
+description: Helm chart لتطبيق DevOps Journey
+type: application
+version: 0.2.0        # نسخة الـ chart نفسه
+appVersion: "1"       # نسخة التطبيق

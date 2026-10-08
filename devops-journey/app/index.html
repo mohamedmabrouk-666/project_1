@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevOps Journey | مشروع محمد مبروك</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="logo">🚀 DevOps<span>Journey</span></div>
+    <nav>
+      <a href="#status">الحالة</a>
+      <a href="#about">عن المشروع</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>مشروع بسيط بعقلية DevOps كاملة</h1>
+      <p>صفحة ويب صغيرة... لكنها بوابة لتعلّم Docker, Terraform, Kubernetes, CI/CD, Monitoring والـ Security.</p>
+      <button id="checkStatusBtn">تحقق من حالة السيرفر</button>
+    </section>
+
+    <section id="status" class="status-card">
+      <h2>Server / App Status</h2>
+      <div id="statusResult" class="status-box">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">اضغط الزرار للتحقق</span>
+      </div>
+      <p class="hint">* الزرار ده هيستدعي <code>health.json</code> — لاحقاً هنستبدله بـ endpoint حقيقي من الباك إند وهيبقى هو نفسه اللي Kubernetes وPrometheus هيراقبوه.</p>
+    </section>
+
+    <section id="about" class="about">
+      <h2>عن المشروع</h2>
+      <ul id="toolsList">
+        <!-- هيتملى بالـ JavaScript -->
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>Mohamed Mabrouk — DevOps & Cloud Engineering &middot; <span id="year"></span></p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

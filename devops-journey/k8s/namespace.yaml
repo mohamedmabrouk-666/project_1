@@ -1,0 +1,8 @@
+# Namespace: "غرفة" معزولة جوه الـ cluster (صلاحيات وحصص ومراقبة لكل غرفة)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: devops-journey
+  labels:
+    # Pod Security Standards: الـ cluster يرفض أي pod مش ملتزم بأعلى مستوى أمان
+    pod-security.kubernetes.io/enforce: restricted

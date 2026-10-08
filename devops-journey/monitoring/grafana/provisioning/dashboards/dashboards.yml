@@ -1,0 +1,8 @@
+# يقول لـ Grafana تحمّل أي dashboard JSON موجود في المجلد ده تلقائي
+apiVersion: 1
+providers:
+  - name: default
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards
+# حط ملفات .json هنا (مثلاً Node Exporter Full ID 1860 من grafana.com → Export JSON)

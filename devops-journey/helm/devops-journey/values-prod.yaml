@@ -1,0 +1,9 @@
+# prod: نسخ أكتر وحدود أعلى
+replicaCount: 3
+ingress:
+  host: devops-journey.example.com
+autoscaling:
+  minReplicas: 3
+  maxReplicas: 10
+resources:
+  limits: { cpu: 500m, memory: 256Mi }

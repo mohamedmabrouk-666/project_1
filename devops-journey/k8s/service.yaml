@@ -1,0 +1,15 @@
+# Service: عنوان ثابت داخلي + load balancing بين الـ pods
+# (الـ pods IPs بتتغير، الـ Service مابيتغيرش)
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-journey-svc
+  namespace: devops-journey
+  labels: { app: devops-journey }
+spec:
+  type: ClusterIP                    # داخلي — الـ Ingress هو اللي يعرّضه
+  selector: { app: devops-journey }  # يوزّع على أي pod عليه الـ label ده
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

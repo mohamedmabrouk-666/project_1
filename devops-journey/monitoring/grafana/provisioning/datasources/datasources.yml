@@ -1,0 +1,12 @@
+# Provisioning: Grafana يتظبط من ملفات (Infrastructure as Code) مش بالضغط يدوي
+apiVersion: 1
+datasources:
+  - name: Prometheus        # metrics
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+  - name: Loki              # logs
+    type: loki
+    access: proxy
+    url: http://loki:3100

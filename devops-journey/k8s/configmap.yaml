@@ -1,0 +1,9 @@
+# ConfigMap: إعدادات غير حساسة منفصلة عن الـ image (نفس الـ image لكل البيئات)
+# الأسرار الحساسة مكانها Secret / External Secrets، مش هنا
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: devops-journey-config
+  namespace: devops-journey
+data:
+  APP_ENV: "production"

@@ -1,0 +1,23 @@
+# Ingress: بوابة الدخول من بره (HTTP routing حسب الدومين والمسار)
+# محتاج Ingress Controller متنصّب (مثلاً ingress-nginx)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devops-journey
+  namespace: devops-journey
+  annotations:
+    # منع الوصول الخارجي لـ /stub_status (للـ Prometheus جوه الـ cluster بس)
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location = /stub_status { deny all; return 403; }
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: devops-journey.local     # ← غيّره لدومينك (أضفه في /etc/hosts للتجربة)
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: devops-journey-svc
+                port: { number: 80 }

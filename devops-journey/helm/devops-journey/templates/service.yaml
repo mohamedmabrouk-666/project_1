@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dj.fullname" . }}
+  labels: {{- include "dj.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: {{ include "dj.fullname" . }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}

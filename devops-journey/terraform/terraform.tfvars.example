@@ -1,0 +1,4 @@
+# انسخ الملف ده لـ terraform.tfvars (مستثنى من Git) وعدّل القيم
+my_ip       = "203.0.113.10"
+alert_email = "you@example.com"
+environment = "dev"

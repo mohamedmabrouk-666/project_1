@@ -1,0 +1,74 @@
+---
+# =====================================================================
+# playbook.yml — "الحالة المطلوبة" للسيرفر (Configuration Management)
+# الفرق عن Terraform: Terraform بينشئ السيرفر، Ansible بيظبط اللي جواه
+# Idempotent: تشغّله 10 مرات = نفس النتيجة، ومابيعيدش اللي موجود
+# التشغيل: ansible-playbook playbook.yml
+# =====================================================================
+- name: Configure web server
+  hosts: web
+
+  vars:
+    app_image: "mohamedmabrouk/devops-journey:1"   # ← tag محدد مش latest
+
+  tasks:
+    # --- تحديث + أدوات أساسية ---
+    - name: Update all packages (security patches)
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        security: true            # تحديثات الأمان بس
+
+    - name: Install Docker + tools
+      ansible.builtin.dnf:
+        name: [docker, python3-pip, amazon-cloudwatch-agent]
+        state: present
+
+    - name: Install docker SDK for Python (محتاجه community.docker)
+      ansible.builtin.pip:
+        name: docker
+        state: present
+
+    - name: Start and enable Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true             # يشتغل عند كل boot
+
+    # --- Hardening: تقوية أمان SSH ---
+    - name: Disable SSH root login and password auth
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^#?PermitRootLogin',        line: 'PermitRootLogin no' }
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+      notify: Restart sshd          # handler: يشتغل بس لو حصل تغيير فعلاً
+
+    # --- تشغيل التطبيق ---
+    - name: Run app container
+      community.docker.docker_container:
+        name: web
+        image: "{{ app_image }}"
+        state: started
+        pull: true                  # يسحب النسخة الجديدة لو الـ tag اتغيّر
+        restart_policy: unless-stopped
+        published_ports: ["80:8080"]
+        read_only: true
+        tmpfs: ["/tmp", "/var/cache/nginx"]
+
+    - name: Wait for app to be healthy
+      ansible.builtin.uri:
+        url: http://localhost/health.json
+        status_code: 200
+      register: health
+      retries: 10
+      delay: 3
+      until: health.status == 200   # يحاول 10 مرات قبل ما يعتبرها فشل
+
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted

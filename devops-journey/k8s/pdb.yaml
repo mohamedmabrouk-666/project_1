@@ -1,0 +1,10 @@
+# PodDisruptionBudget: وقت صيانة الـ nodes، ماينفعش كل الـ pods تنزل مرة واحدة
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: devops-journey
+  namespace: devops-journey
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: devops-journey }

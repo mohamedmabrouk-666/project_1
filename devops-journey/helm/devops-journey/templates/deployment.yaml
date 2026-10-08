@@ -1,0 +1,43 @@
+# القيم بتيجي من values.yaml عن طريق Go template (الأقواس المزدوجة تحت)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dj.fullname" . }}
+  labels: {{- include "dj.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}      # لو الـ HPA شغال هو اللي يتحكم في العدد
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "dj.fullname" . }}
+  template:
+    metadata:
+      labels: {{- include "dj.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /health.json, port: {{ .Values.service.targetPort }} }
+          livenessProbe:
+            httpGet: { path: /health.json, port: {{ .Values.service.targetPort }} }
+            initialDelaySeconds: 10
+          volumeMounts:
+            - { name: tmp,   mountPath: /tmp }
+            - { name: cache, mountPath: /var/cache/nginx }
+      volumes:
+        - { name: tmp,   emptyDir: {} }
+        - { name: cache, emptyDir: {} }

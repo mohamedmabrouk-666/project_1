@@ -1,0 +1,34 @@
+# =====================================================================
+# docker-compose.yml — تشغيل التطبيق محلياً بأمر واحد: make up
+# المشكلة: docker run بمتغيرات طويلة لكل خدمة = صعب ومعرّض للغلط
+# الحل: ملف واحد يوصف كل حاجة، والشبكة بين الخدمات بتتعمل لوحدها
+# =====================================================================
+name: devops-journey
+
+services:
+  web:
+    build: .                          # يبني من الـ Dockerfile اللي فوق
+    image: devops-journey:local
+    container_name: web
+    ports:
+      - "8080:8080"                   # host:container
+    restart: unless-stopped           # لو وقع يرجع يشتغل (إلا لو انت وقفته)
+    read_only: true                   # الـ filesystem للقراءة بس (أمان)
+    tmpfs:                            # nginx محتاج يكتب في الأماكن دي بس
+      - /tmp
+      - /var/cache/nginx
+    cap_drop: [ALL]                   # نشيل كل صلاحيات linux مش محتاجينها
+    security_opt:
+      - no-new-privileges:true
+    networks: [app-net]
+
+  # exporter بيحوّل stub_status بتاع nginx لـ metrics يفهمها Prometheus
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.3
+    command: ["--nginx.scrape-uri=http://web:8080/stub_status"]
+    depends_on: [web]
+    networks: [app-net]
+
+networks:
+  app-net:
+    name: app-net                     # اسم ثابت عشان ملفات compose التانية تنضم له

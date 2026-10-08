@@ -1,0 +1,12 @@
+# --- Terraform: الـ state والـ providers مايترفعوش على Git أبداً (فيهم أسرار) ---
+**/.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+# --- أسرار ومفاتيح ---
+.env
+*.pem
+*.key
+# --- أدوات ---
+node_modules/
+.scannerwork/

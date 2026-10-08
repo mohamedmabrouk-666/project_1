@@ -1,0 +1,66 @@
+# =====================================================================
+# Deployment: بيحافظ على عدد معين من الـ pods شغال دايماً
+# المشكلة: container واحد لو وقع، الموقع يقف | التحديث = downtime
+# الحل: عدة نسخ + إعادة تشغيل تلقائي + rolling update
+# =====================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-journey
+  namespace: devops-journey
+  labels: { app: devops-journey }
+spec:
+  replicas: 2                        # نسختين: لو واحدة وقعت التانية تخدم
+  revisionHistoryLimit: 5            # نحتفظ بآخر 5 نسخ للـ rollback
+  strategy:
+    type: RollingUpdate              # نحدّث pod pod
+    rollingUpdate:
+      maxUnavailable: 0              # مايقلّش عن العدد المطلوب أثناء التحديث
+      maxSurge: 1                    # يزوّد pod واحد زيادة مؤقتاً
+  selector:
+    matchLabels: { app: devops-journey }
+  template:
+    metadata:
+      labels: { app: devops-journey }
+    spec:
+      securityContext:               # أمان على مستوى الـ pod
+        runAsNonRoot: true
+        runAsUser: 101               # نفس user الـ image
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: web
+          # ⚠️ الـ tag ده بيتعدّل أوتوماتيك من الـ CI (sed) — GitOps
+          # ممنوع :latest (Kyverno بيرفضه)
+          image: mohamedmabrouk/devops-journey:1
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef: { name: devops-journey-config }
+          securityContext:           # أمان على مستوى الـ container
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 50m,  memory: 64Mi }    # المضمون (الـ scheduler يحجزه)
+            limits:   { cpu: 200m, memory: 128Mi }   # الحد الأقصى
+          # nginx محتاج يكتب في أماكن معينة والـ root filesystem read-only
+          volumeMounts:
+            - { name: tmp,   mountPath: /tmp }
+            - { name: cache, mountPath: /var/cache/nginx }
+          # startupProbe: نستنى التطبيق يقوم قبل ما نبدأ الفحوصات التانية
+          startupProbe:
+            httpGet: { path: /health.json, port: 8080 }
+            failureThreshold: 10
+            periodSeconds: 3
+          # readinessProbe: جاهز يستقبل traffic؟ لو لأ → يتشال من الـ Service (من غير restart)
+          readinessProbe:
+            httpGet: { path: /health.json, port: 8080 }
+            periodSeconds: 5
+          # livenessProbe: لسه عايش؟ لو لأ → Kubernetes يعمله restart (self-healing)
+          livenessProbe:
+            httpGet: { path: /health.json, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+      volumes:
+        - { name: tmp,   emptyDir: {} }
+        - { name: cache, emptyDir: {} }

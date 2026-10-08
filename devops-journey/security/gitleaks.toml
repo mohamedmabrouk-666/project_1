@@ -1,0 +1,9 @@
+# Gitleaks: يدوّر على secrets متسرّبة (AWS keys, tokens, private keys...) في الكود والـ history
+title = "gitleaks config"
+
+[extend]
+useDefault = true     # القواعد الجاهزة (مئات الأنماط)
+
+[allowlist]
+description = "ملفات مسموح فيها بأمثلة"
+paths = ['''\.md$''', '''\.example$''']
